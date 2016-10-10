@@ -3,8 +3,10 @@
 namespace Bernard\Queue;
 
 use Bernard\Driver;
+use Bernard\DelayableDriver;
 use Bernard\Envelope;
 use Bernard\Serializer;
+use Bernard\Exception\InvalidOperationException;
 
 /**
  * @package Bernard
@@ -68,7 +70,23 @@ class PersistentQueue extends AbstractQueue
     {
         $this->errorIfClosed();
 
-        $this->driver->pushMessage($this->name, $this->serializer->serialize($envelope));
+        if ($envelope->isDelayed()) {
+            $this->assertDriverIsDelayable();
+            $this->driver->pushMessageWithDelay(
+                $this->name,
+                $this->serializer->serialize($envelope),
+                $envelope->getDelay()
+            );
+        } else {
+            $this->driver->pushMessage($this->name, $this->serializer->serialize($envelope));
+        }
+    }
+
+    private function assertDriverIsDelayable()
+    {
+        if (!($this->driver instanceof DelayableDriver)) {
+            throw new InvalidOperationException('This driver can\'t manage delayed messages');
+        }
     }
 
     /**
