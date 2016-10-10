@@ -26,6 +26,32 @@ class PersistentQueueTest extends AbstractQueueTest
         $queue->enqueue($envelope);
     }
 
+    /**
+     * @expectedException Bernard\Exception\InvalidOperationException
+     * @expectedExceptionMessage This driver can't manage delayed messages
+     */
+    public function testEnqueueDelayedWithNotDelayableDriver()
+    {
+        $envelope = new Envelope($this->getMock('Bernard\Message'), 10);
+
+        $queue = $this->createQueue('send-newsletter');
+        $queue->enqueue($envelope);
+    }
+
+    public function testEnqueueDelayed()
+    {
+        $this->driver = $this->getMock('Bernard\DelayableDriver');
+        $envelope = new Envelope($this->getMock('Bernard\Message'), 10);
+
+        $this->serializer->expects($this->once())->method('serialize')->with($this->equalTo($envelope))
+            ->will($this->returnValue('serialized message'));
+        $this->driver->expects($this->once())->method('pushMessageWithDelay')
+            ->with($this->equalTo('send-newsletter'), $this->equalTo('serialized message'), $this->equalTo(10));
+
+        $queue = $this->createQueue('send-newsletter');
+        $queue->enqueue($envelope);
+    }
+
     public function testAcknowledge()
     {
         $envelope = new Envelope($this->getMock('Bernard\Message'));
