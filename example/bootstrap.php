@@ -31,7 +31,7 @@ function get_serializer() {
 function get_event_dispatcher() {
     $dispatcher = new EventDispatcher;
     $dispatcher->addSubscriber(new EventListener\ErrorLogSubscriber);
-    $dispatcher->addSubscriber(new EventListener\FailureSubscriber(get_queue_factory()));
+    $dispatcher->addSubscriber(new EventListener\FailureSubscriber(get_producer()));
 
     return $dispatcher;
 }
@@ -58,7 +58,7 @@ function produce() {
     $producer = get_producer();
 
     while (true) {
-        $producer->produce(new Message\DefaultMessage('EchoTime', array(
+        $producer->produce(new Message\PlainMessage('EchoTime', array(
             'time' => time(),
         )));
 

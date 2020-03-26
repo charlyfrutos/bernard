@@ -4,13 +4,10 @@ namespace Bernard\Tests\Driver;
 
 use Bernard\Doctrine\MessagesSchema;
 use Bernard\Driver\DoctrineDriver;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\DriverManager;
-use Doctrine\DBAL\Logging\DebugStack;
-use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
+use Doctrine\DBAL\Schema\Schema;
 
-abstract class AbstractDoctrineDriverTest extends \PHPUnit_Framework_TestCase
+abstract class AbstractDoctrineDriverTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @var Connection
@@ -32,7 +29,7 @@ abstract class AbstractDoctrineDriverTest extends \PHPUnit_Framework_TestCase
             $this->markTestSkipped('The driver isn\'t installed on your machine');
         }
 
-        $this->connection = $this->setUpDatabase();
+        $this->setUpDatabase();
         $this->driver = new DoctrineDriver($this->connection);
     }
 
@@ -151,18 +148,30 @@ abstract class AbstractDoctrineDriverTest extends \PHPUnit_Framework_TestCase
 
     public function testItIsAQueue()
     {
-        $this->driver->pushMessage('send-newsletter', 'my-message-1');
-        $this->driver->pushMessage('send-newsletter', 'my-message-2');
+        $messages = array_map(function ($i) {
+            $this->driver->pushMessage('send-newsletter', $message = 'my-message-'.$i);
+            return $message;
+        }, range(1, 6));
+
+        $assertPeek = function (array $peeked, $expectedCount) use ($messages) {
+            self::assertCount($expectedCount, $peeked);
+            foreach ($peeked as $peek) {
+                self::assertContains($peek, $messages);
+            }
+        };
 
         // peeking
-        $this->assertEquals(array('my-message-1', 'my-message-2'), $this->driver->peekQueue('send-newsletter'));
-        $this->assertEquals(array('my-message-2'), $this->driver->peekQueue('send-newsletter', 1));
-        $this->assertEquals(array('my-message-1'), $this->driver->peekQueue('send-newsletter', 0, 1));
-        $this->assertEquals(array(), $this->driver->peekQueue('import-users'));
+        $assertPeek($this->driver->peekQueue('send-newsletter'), 6);
+        $assertPeek($this->driver->peekQueue('send-newsletter', 0, 3), 3);
+        $assertPeek($this->driver->peekQueue('send-newsletter', 1), 5);
 
-        // popping messages
-        $this->assertEquals(array('my-message-1', 1), $this->driver->popMessage('send-newsletter'));
-        $this->assertEquals(array('my-message-2', 2), $this->driver->popMessage('send-newsletter'));
+        $this->assertEquals([], $this->driver->peekQueue('import-users'));
+
+        // popping
+        list($message, $id) = $this->driver->popMessage('send-newsletter');
+        self::assertContains($message, $messages);
+        list($message, $id) = $this->driver->popMessage('send-newsletter');
+        self::assertContains($message, $messages);
 
         // No messages when all are invisible
         $this->assertInternalType('null', $this->driver->popMessage('import-users', 0.0001));
@@ -208,19 +217,22 @@ abstract class AbstractDoctrineDriverTest extends \PHPUnit_Framework_TestCase
 
     protected function setUpDatabase()
     {
-        $connection = $this->createConnection();
+        $this->connection = $this->createConnection();
 
         $schema = new Schema;
 
         MessagesSchema::create($schema);
 
-        array_map(array($connection, 'executeQuery'), $schema->toSql($connection->getDatabasePlatform()));
-
-        return $connection;
+        array_map(array($this->connection, 'executeQuery'), $schema->toSql($this->connection->getDatabasePlatform()));
     }
 
     /**
      * @return \Doctrine\DBAL\Connection
      */
     protected abstract function createConnection();
+
+    /**
+     * @return bool
+     */
+    protected abstract function isSupported();
 }

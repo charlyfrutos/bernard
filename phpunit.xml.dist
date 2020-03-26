@@ -7,7 +7,6 @@
          processIsolation="false"
          stopOnFailure="false"
          syntaxCheck="false"
-         strict="true"
          bootstrap="vendor/autoload.php">
 
     <testsuites>
@@ -16,18 +15,15 @@
         </testsuite>
     </testsuites>
 
+    <filter>
+        <whitelist addUncoveredFilesFromWhitelist="true" processUncoveredFilesFromWhitelist="false">
+            <directory suffix=".php">./src</directory>
+        </whitelist>
+    </filter>
+
     <groups>
         <exclude>
             <group>functional</group>
         </exclude>
     </groups>
-
-    <filter>
-        <whitelist>
-            <directory>src</directory>
-            <exclude>
-                <directory>src/Bernard/Resources</directory>
-            </exclude>
-        </whitelist>
-    </filter>
 </phpunit>

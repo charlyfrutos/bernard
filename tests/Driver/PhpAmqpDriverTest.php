@@ -7,7 +7,7 @@ use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-class PhpAmqpDriverTest extends \PHPUnit_Framework_TestCase
+class PhpAmqpDriverTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @var AMQPStreamConnection
@@ -28,28 +28,24 @@ class PhpAmqpDriverTest extends \PHPUnit_Framework_TestCase
 
     protected function setUp()
     {
-        $this->phpAmqpChannel = $this->getMock(
-            '\PhpAmqpLib\Channel\AMQPChannel',
-            array(
+        $this->phpAmqpChannel = $this->getMockBuilder('\PhpAmqpLib\Channel\AMQPChannel')
+            ->setMethods(array(
                 'basic_publish',
                 'basic_get',
                 'basic_ack',
                 'exchange_declare',
                 'queue_declare',
                 'queue_bind'
-            ),
-            array(),
-            '',
-            false
-        );
+            ))
+            ->disableOriginalConstructor()
+            ->getMock();
 
-        $this->phpAmqpConnection = $this->getMock(
-            '\PhpAmqpLib\Connection\AMQPStreamConnection',
-            array('channel'),
-            array(),
-            '',
-            false
-        );
+        $this->phpAmqpConnection = $this->getMockBuilder('\PhpAmqpLib\Connection\AMQPStreamConnection')
+            ->setMethods(array(
+                'channel',
+            ))
+            ->disableOriginalConstructor()
+            ->getMock();
 
         $this->phpAmqpConnection
             ->expects($this->any())
@@ -79,7 +75,7 @@ class PhpAmqpDriverTest extends \PHPUnit_Framework_TestCase
         $this->phpAmqpChannel
             ->expects($this->once())
             ->method('queue_bind')
-            ->with('foo-queue', self::EXCHANGE_NAME)
+            ->with('foo-queue', self::EXCHANGE_NAME, 'foo-queue')
         ;
 
         $this->driver->createQueue('foo-queue');
@@ -94,7 +90,8 @@ class PhpAmqpDriverTest extends \PHPUnit_Framework_TestCase
                 $this->callback(function(AMQPMessage $message) {
                     return $message->body == 'dummy push message';
                 }),
-                self::EXCHANGE_NAME
+                self::EXCHANGE_NAME,
+                'not-relevant'
             );
         $this->driver->pushMessage('not-relevant', 'dummy push message');
     }
@@ -114,7 +111,8 @@ class PhpAmqpDriverTest extends \PHPUnit_Framework_TestCase
                 $this->callback(function(AMQPMessage $message) {
                     return $message->get('delivery_mode') === 2;
                 }),
-                self::EXCHANGE_NAME
+                self::EXCHANGE_NAME,
+                'not-relevant'
             );
         $this->driver->pushMessage('not-relevant', 'dummy push message');
     }
@@ -135,13 +133,19 @@ class PhpAmqpDriverTest extends \PHPUnit_Framework_TestCase
 
     public function testItPopsArrayWithNullsWhenThereAreNoMessages()
     {
+        $startTime = microtime(true);
+
         $this->phpAmqpChannel
-            ->expects($this->once())
+            ->expects($this->any())
             ->method('basic_get')
             ->with($this->equalTo('foo-queue'))
             ->willReturn(null);
 
-        $this->assertEquals([null, null], $this->driver->popMessage('foo-queue'));
+        $result = $this->driver->popMessage('foo-queue', 0.1);
+        $duration = microtime(true) - $startTime;
+
+        $this->assertEquals([null, null], $result);
+        $this->assertGreaterThan(0.1, $duration);
     }
 
     public function testItAcknowledgesMessage()

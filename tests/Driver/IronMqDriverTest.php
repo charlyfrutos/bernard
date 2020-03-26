@@ -4,11 +4,11 @@ namespace Bernard\Tests\Driver;
 
 use Bernard\Driver\IronMqDriver;
 
-class IronMqDriverTest extends \PHPUnit_Framework_TestCase
+class IronMqDriverTest extends \PHPUnit\Framework\TestCase
 {
     public function setUp()
     {
-        $this->ironmq = $this->getMockBuilder('IronMQ')
+        $this->ironmq = $this->getMockBuilder('\IronMQ\IronMQ')
             ->setMethods(array(
                 'getQueue',
                 'getQueues',

@@ -154,7 +154,7 @@ class DoctrineDriver implements \Bernard\Driver
         $parameters = [$queueName, $limit, $index];
         $types = ['string', 'integer', 'integer'];
 
-        $query = 'SELECT message FROM bernard_messages WHERE queue = ? ORDER BY sentAt, id LIMIT ? OFFSET ?';
+        $query = 'SELECT message FROM bernard_messages WHERE queue = ? ORDER BY sentAt LIMIT ? OFFSET ?';
 
         return $this
             ->connection

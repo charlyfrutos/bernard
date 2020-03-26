@@ -6,7 +6,7 @@ earlier, a message's name is used to determine which service object should
 receive that message.
 
 A service object can be any object that has a method corresponding to the name of the
-message with the first letter lower cased. So ``new DefaultMessage('SendNewsletter')`` will trigger a
+message with the first letter lower cased. So ``new PlainMessage('SendNewsletter')`` will trigger a
 call to ``$serviceObject->sendNewsletter($message)``. For the system to know which service
 object should handle which messages, you are required to register them first.
 
@@ -35,10 +35,12 @@ object should handle which messages, you are required to register them first.
     // $router = new \Bernard\Router\ContainerAwareRouter($container);
     // $router->add('SendNewsletter', 'my.service.id');
 
-    // Create a Consumer and start the loop. The second argument is optional and is an array
+    // Create a Consumer and start the loop.
+    $consumer = new Consumer($router, $eventDispatcher);
+    
+    // The second argument is optional and is an array
     // of options. Currently only ``max-runtime`` is supported which specifies the max runtime
     // in seconds.
-    $consumer = new Consumer($router, $eventDispatcher);
     $consumer->consume($queueFactory->create('send-newsletter'), array(
         'max-runtime' => 900,
     ));
@@ -46,7 +48,7 @@ object should handle which messages, you are required to register them first.
 Commandline Interface
 ---------------------
 
-Bernard comes with a ``ConsumeCommand`` which can be used with Symfony Console 
+Bernard comes with a ``ConsumeCommand`` which can be used with Symfony Console
 component.
 
 .. code-block:: php

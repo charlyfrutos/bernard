@@ -1,13 +1,12 @@
+sudo: false
+dist: trusty
+
 language: php
 
 php:
-  - 5.4
-  - 5.5
   - 5.6
   - 7.0
   - hhvm
-
-sudo: false
 
 env:
   - COMPOSER_OPTS=""
@@ -17,12 +16,15 @@ cache:
   directories:
     - $HOME/.composer/cache/files
 
-services: mongodb
+services:
+  - mongodb
+  - mysql
+  - postgresql
 
 before_script:
   - tests/travis.sh
 
 script:
-  - phpunit
-  - phpunit --group functional
+  - php vendor/bin/phpunit -v
+  - php vendor/bin/phpunit --group functional -v
   - php vendor/bin/phpspec run

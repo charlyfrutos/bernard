@@ -102,10 +102,9 @@ class FlatFileDriver implements \Bernard\Driver
         while (microtime(true) < $runtime) {
             if ($files) {
                 $id = array_pop($files);
-                $data = array(file_get_contents($queueDir.DIRECTORY_SEPARATOR.$id), $id);
-                rename($queueDir.DIRECTORY_SEPARATOR.$id, $queueDir.DIRECTORY_SEPARATOR.$id.'.proceed');
-
-                return $data;
+                if (@rename($queueDir.DIRECTORY_SEPARATOR.$id, $queueDir.DIRECTORY_SEPARATOR.$id.'.proceed')) {
+                    return array(file_get_contents($queueDir.DIRECTORY_SEPARATOR.$id.'.proceed'), $id);
+                }
             }
 
             usleep(1000);
@@ -163,7 +162,7 @@ class FlatFileDriver implements \Bernard\Driver
             \FilesystemIterator::SKIP_DOTS
         );
         $iterator = new \RecursiveIteratorIterator($iterator);
-        $iterator = new \RegexIterator($iterator, '#\.job$#');
+        $iterator = new \RegexIterator($iterator, '#\.job(.proceed)?$#');
 
         foreach ($iterator as $file) {
             /* @var $file \DirectoryIterator */
@@ -193,6 +192,8 @@ class FlatFileDriver implements \Bernard\Driver
 
     /**
      * Generates a uuid.
+     *
+     * @param string $queueName
      *
      * @return string
      */
