@@ -3,6 +3,7 @@
 namespace Bernard\Driver;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\ConstraintViolationException;
 
 /**
  * Driver supporting Doctrine DBAL
@@ -33,13 +34,31 @@ class DoctrineDriver implements \Bernard\Driver
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
+     *
+     * @throws \Exception
      */
     public function createQueue($queueName)
     {
         try {
-            $this->connection->insert('bernard_queues', ['name' => $queueName]);
-        } catch (\Exception $e) {
+            $this->connection->transactional(function () use ($queueName) {
+                $queueExistsQb = $this->connection->createQueryBuilder();
+
+                $queueExists = $queueExistsQb
+                    ->select('name')
+                    ->from('bernard_queues')
+                    ->where($queueExistsQb->expr()->eq('name', ':name'))
+                    ->setParameter('name', $queueName)
+                    ->execute();
+
+                if ($queueExists->fetch()) {
+                    // queue was already created
+                    return;
+                }
+
+                $this->connection->insert('bernard_queues', array('name' => $queueName));
+            });
+        } catch (ConstraintViolationException $ignored) {
             // Because SQL server does not support a portable INSERT ON IGNORE syntax
             // this ignores error based on primary key.
         }
@@ -101,6 +120,24 @@ class DoctrineDriver implements \Bernard\Driver
         }
     }
 
+    protected function doPopMessage($queueName)
+    {
+        $query = 'SELECT id, message FROM bernard_messages
+                  WHERE queue = :queue AND visible = :visible
+                  ORDER BY sentAt, id LIMIT 1 ' . $this->connection->getDatabasePlatform()->getForUpdateSql();
+
+        list($id, $message) = $this->connection->fetchArray($query, array(
+            'queue' => $queueName,
+            'visible' => true,
+        ));
+
+        if ($id) {
+            $this->connection->update('bernard_messages', array('visible' => 0), compact('id'));
+
+            return array($message, $id);
+        }
+    }
+    
     /**
      * {@inheritdoc}
      */
