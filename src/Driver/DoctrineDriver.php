@@ -137,7 +137,7 @@ class DoctrineDriver implements \Bernard\Driver
             return array($message, $id);
         }
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -182,30 +182,5 @@ class DoctrineDriver implements \Bernard\Driver
         unset($params['user'], $params['password']);
 
         return $params;
-    }
-
-    /**
-     * Execute the actual query and process the response
-     *
-     * @param string $queueName
-     *
-     * @return array|null
-     */
-    protected function doPopMessage($queueName)
-    {
-        $query = 'SELECT id, message FROM bernard_messages
-                  WHERE queue = :queue AND visible = :visible
-                  ORDER BY sentAt, id LIMIT 1 ' . $this->connection->getDatabasePlatform()->getForUpdateSql();
-
-        list($id, $message) = $this->connection->fetchArray($query, [
-            'queue' => $queueName,
-            'visible' => true,
-        ]);
-
-        if ($id) {
-            $this->connection->update('bernard_messages', ['visible' => 0], compact('id'));
-
-            return [$message, $id];
-        }
     }
 }
